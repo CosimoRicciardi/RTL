@@ -199,16 +199,18 @@ export const updateNodeSettings = (req, res, next) => {
     const RTLConfFile = common.appConfig.rtlConfFilePath + sep + 'RTL-Config.json';
     const config = JSON.parse(fs.readFileSync(RTLConfFile, 'utf-8'));
     const node = config.nodes.find((node) => (node.index === req.session.selectedNode.index));
+    const requestAuthentication = req.body.authentication || {};
     if (node && node.settings) {
         node.settings = req.body.settings;
-        if (req.body.authentication.boltzMacaroonPath) {
-            node.authentication.boltzMacaroonPath = req.body.authentication.boltzMacaroonPath;
+        node.authentication = node.authentication || {};
+        if (requestAuthentication.boltzMacaroonPath) {
+            node.authentication.boltzMacaroonPath = requestAuthentication.boltzMacaroonPath;
         }
         else {
             delete node.authentication.boltzMacaroonPath;
         }
-        if (req.body.authentication.swapMacaroonPath) {
-            node.authentication.swapMacaroonPath = req.body.authentication.swapMacaroonPath;
+        if (requestAuthentication.swapMacaroonPath) {
+            node.authentication.swapMacaroonPath = requestAuthentication.swapMacaroonPath;
         }
         else {
             delete node.authentication.swapMacaroonPath;
@@ -219,8 +221,12 @@ export const updateNodeSettings = (req, res, next) => {
         const selectedNode = common.findNode(req.session.selectedNode.index);
         if (selectedNode && selectedNode.settings) {
             selectedNode.settings = req.body.settings;
-            selectedNode.authentication.boltzMacaroonPath = req.body.authentication.boltzMacaroonPath;
-            selectedNode.authentication.swapMacaroonPath = req.body.authentication.swapMacaroonPath;
+            selectedNode.authentication = {
+                ...(node?.authentication || {}),
+                ...(selectedNode.authentication || {}),
+                boltzMacaroonPath: requestAuthentication.boltzMacaroonPath || '',
+                swapMacaroonPath: requestAuthentication.swapMacaroonPath || ''
+            };
             common.replaceNode(req, selectedNode);
         }
         let responseNode = JSON.parse(JSON.stringify(common.selectedNode));
@@ -238,7 +244,13 @@ export const updateApplicationSettings = (req, res, next) => {
     logger.log({ selectedNode: req.session.selectedNode, level: 'INFO', fileName: 'RTLConf', msg: 'Updating Application Settings..' });
     const RTLConfFile = common.appConfig.rtlConfFilePath + sep + 'RTL-Config.json';
     try {
-        const config = common.addSecureData(req.body);
+        const savedConfig = JSON.parse(fs.readFileSync(RTLConfFile, 'utf-8'));
+        const config = common.addSecureData({
+            ...savedConfig,
+            ...req.body,
+            SSO: { ...savedConfig.SSO, ...req.body.SSO },
+            nodes: savedConfig.nodes
+        });
         common.appConfig = JSON.parse(JSON.stringify(config));
         delete config.selectedNodeIndex;
         delete config.enable2FA;

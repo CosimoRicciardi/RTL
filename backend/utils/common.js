@@ -40,23 +40,25 @@ export class CommonService {
             return obj;
         };
         this.removeAuthSecureData = (node) => {
-            if (node.authentication) {
-                delete node.authentication.macaroonPath;
-                delete node.authentication.runePath;
-                delete node.authentication.runeValue;
-                delete node.authentication.lnApiPassword;
-                delete node.authentication.options;
+            const safeNode = JSON.parse(JSON.stringify(node));
+            if (safeNode.authentication) {
+                delete safeNode.authentication.macaroonPath;
+                delete safeNode.authentication.runePath;
+                delete safeNode.authentication.runeValue;
+                delete safeNode.authentication.lnApiPassword;
+                delete safeNode.authentication.options;
             }
-            return node;
+            return safeNode;
         };
         this.removeSecureData = (config) => {
-            delete config.rtlConfFilePath;
-            delete config.rtlPass;
-            delete config.multiPass;
-            delete config.multiPassHashed;
-            delete config.secret2FA;
-            config.nodes?.map((node) => this.removeAuthSecureData(node));
-            return config;
+            const safeConfig = JSON.parse(JSON.stringify(config));
+            delete safeConfig.rtlConfFilePath;
+            delete safeConfig.rtlPass;
+            delete safeConfig.multiPass;
+            delete safeConfig.multiPassHashed;
+            delete safeConfig.secret2FA;
+            safeConfig.nodes = safeConfig.nodes?.map((node) => this.removeAuthSecureData(node));
+            return safeConfig;
         };
         this.addSecureData = (config) => {
             config.rtlConfFilePath = this.appConfig.rtlConfFilePath;
@@ -70,15 +72,17 @@ export class CommonService {
                 config.secret2FA = this.appConfig.secret2FA;
             }
             config.nodes.map((node, i) => {
-                if (this.appConfig && this.appConfig.nodes && this.appConfig.nodes.length > i && this.appConfig.nodes[i].authentication) {
-                    if (this.appConfig.nodes[i].authentication.macaroonPath) {
-                        node.authentication.macaroonPath = this.appConfig.nodes[i].authentication.macaroonPath;
+                node.authentication = node.authentication || {};
+                const appConfigNode = this.appConfig.nodes?.find((appNode) => appNode.index === node.index) || this.appConfig.nodes?.[i];
+                if (appConfigNode?.authentication) {
+                    if (!node.authentication.macaroonPath && appConfigNode.authentication.macaroonPath) {
+                        node.authentication.macaroonPath = appConfigNode.authentication.macaroonPath;
                     }
-                    if (this.appConfig.nodes[i].authentication.runePath) {
-                        node.authentication.runePath = this.appConfig.nodes[i].authentication.runePath;
+                    if (!node.authentication.runePath && appConfigNode.authentication.runePath) {
+                        node.authentication.runePath = appConfigNode.authentication.runePath;
                     }
-                    if (this.appConfig.nodes[i].authentication.lnApiPassword) {
-                        node.authentication.lnApiPassword = this.appConfig.nodes[i].authentication.lnApiPassword;
+                    if (!node.authentication.lnApiPassword && appConfigNode.authentication.lnApiPassword) {
+                        node.authentication.lnApiPassword = appConfigNode.authentication.lnApiPassword;
                     }
                 }
                 return node;
