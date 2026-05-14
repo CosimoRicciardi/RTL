@@ -80,10 +80,11 @@ export class CommonService {
     if (config.secret2FA === this.appConfig.secret2FA) {
       config.secret2FA = this.appConfig.secret2FA;
     }
-    config.nodes.map((node, i) => {
-      node.authentication = node.authentication || {};
-      const appConfigNode = this.appConfig.nodes?.find((appNode) => appNode.index === node.index) || this.appConfig.nodes?.[i];
+    const appConfigNodes = new Map(this.appConfig.nodes?.map((node) => [node.index, node]) || []);
+    config.nodes?.forEach((node) => {
+      const appConfigNode = appConfigNodes.get(node.index);
       if (appConfigNode?.authentication) {
+        node.authentication = node.authentication || {};
         if (!node.authentication.macaroonPath && appConfigNode.authentication.macaroonPath) {
           node.authentication.macaroonPath = appConfigNode.authentication.macaroonPath;
         }
@@ -94,7 +95,6 @@ export class CommonService {
           node.authentication.lnApiPassword = appConfigNode.authentication.lnApiPassword;
         }
       }
-      return node;
     });
     return config;
   };
